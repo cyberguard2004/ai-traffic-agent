@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<net version="1.20" junctionCornerDetail="5" limitTurnSpeed="5.50" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/net_file.xsd">
+
+    <location netOffset="0.00,0.00" convBoundary="0.00,0.00,500.00,500.00" projParameter="!UTM60N" />
+
+    <edge id=":0_0" function="internal">
+        <lane id=":0_0_0" index="0" speed="6.94" length="9.36" shape="10.00,-5.00 5.25,-2.86 0.00,0.00"/>
+    </edge>
+    <edge id=":1_0" function="internal">
+        <lane id=":1_0_0" index="0" speed="6.94" length="9.36" shape="250.00,-5.00 245.25,-2.86 240.00,0.00"/>
+    </edge>
+    <edge id=":2_0" function="internal">
+        <lane id=":2_0_0" index="0" speed="6.94" length="9.36" shape="500.00,-5.00 495.25,-2.86 490.00,0.00"/>
+    </edge>
+
+    <edge id="1to2" from="1" to="2" priority="-1">
+        <lane id="1to2_0" index="0" speed="13.89" length="250.00" shape="250.00,0.00 500.00,0.00"/>
+    </edge>
+    <edge id="2to1" from="2" to="1" priority="-1">
+        <lane id="2to1_0" index="0" speed="13.89" length="250.00" shape="500.00,-10.00 250.00,-10.00"/>
+    </edge>
+
+    <edge id="3to4" from="3" to="4" priority="-1">
+        <lane id="3to4_0" index="0" speed="13.89" length="250.00" shape="0.00,250.00 250.00,250.00"/>
+    </edge>
+    <edge id="4to3" from="4" to="3" priority="-1">
+        <lane id="4to3_0" index="0" speed="13.89" length="250.00" shape="250.00,260.00 0.00,260.00"/>
+    </edge>
+
+    <edge id="5to6" from="5" to="6" priority="-1">
+        <lane id="5to6_0" index="0" speed="13.89" length="250.00" shape="0.00,500.00 250.00,500.00"/>
+    </edge>
+    <edge id="6to5" from="6" to="5" priority="-1">
+        <lane id="6to5_0" index="0" speed="13.89" length="250.00" shape="250.00,510.00 0.00,510.00"/>
+    </edge>
+
+    <junction id="0" type="dead_end" x="0.00" y="0.00" incLanes="" intLanes=":0_0_0" shape="0.00,0.00 0.00,-10.00 20.00,-5.00"/>
+    <junction id="1" type="priority" x="250.00" y="0.00" incLanes="2to1_0" intLanes=":1_0_0" shape="240.00,0.00 260.00,0.00 260.00,-10.00 240.00,-10.00"/>
+    <junction id="2" type="dead_end" x="500.00" y="0.00" incLanes="1to2_0" intLanes="" shape="500.00,-10.00 500.00,0.00 480.00,-5.00"/>
+    <junction id="3" type="dead_end" x="0.00" y="250.00" incLanes="4to3_0" intLanes="" shape="0.00,260.00 0.00,250.00 -20.00,255.00"/>
+    <junction id="4" type="priority" x="250.00" y="250.00" incLanes="3to4_0" intLanes="" shape="250.00,250.00 250.00,260.00 260.00,260.00 260.00,250.00"/>
+    <junction id="5" type="dead_end" x="0.00" y="500.00" incLanes="6to5_0" intLanes="" shape="0.00,510.00 0.00,500.00 -20.00,505.00"/>
+    <junction id="6" type="dead_end" x="250.00" y="500.00" incLanes="5to6_0" intLanes="" shape="250.00,500.00 250.00,510.00 270.00,505.00"/>
+
+</net>
