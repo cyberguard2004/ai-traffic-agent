@@ -23,6 +23,35 @@ body {
   width: 100%;
 }
 
+.map-controls {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 430;
+  pointer-events: auto;
+}
+
+.map-action-btn {
+  border: 1px solid rgba(81, 144, 188, 0.85);
+  background: rgba(8, 23, 36, 0.82);
+  color: #dbeeff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.map-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.map-action-btn.active {
+  border-color: #22c55e;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.35);
+}
+
 .map-watermark {
   position: absolute;
   right: 16px;
@@ -80,6 +109,14 @@ body {
   width: 100%;
 }
 
+.map-click-armed .osm-map-container {
+  cursor: crosshair;
+}
+
+.vehicle-marker-smooth {
+  transition: transform 180ms linear !important;
+}
+
 .layout-left {
   top: 16px;
   left: 16px;
@@ -132,6 +169,31 @@ body {
   border: 1px solid rgba(62, 105, 139, 0.7);
   border-radius: 10px;
   padding: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fleet-item:hover {
+  border-color: rgba(81, 144, 188, 0.9);
+  background: rgba(40, 70, 100, 0.3);
+}
+
+.fleet-item.selected {
+  border-color: #4ea2d6;
+  background: rgba(40, 90, 130, 0.4);
+  box-shadow: 0 0 12px rgba(78, 162, 214, 0.3);
+}
+
+.fleet-details {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(81, 144, 188, 0.5);
+  font-size: 0.75rem;
+  color: #a9e3ff;
+}
+
+.fleet-details p {
+  margin: 2px 0;
 }
 
 .fleet-head {
@@ -179,6 +241,188 @@ body {
   padding-left: 18px;
   display: grid;
   gap: 6px;
+}
+
+/* Vehicle Details Styles */
+.vehicle-details {
+  font-size: 0.85rem;
+  color: #b7d5eb;
+}
+
+.vehicle-details p {
+  margin: 4px 0;
+}
+
+.vehicle-details strong {
+  color: #dbeeff;
+}
+
+/* Speed Control */
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.speed-control input[type="range"] {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(62, 105, 139, 0.5);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.speed-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #4ea2d6;
+  cursor: pointer;
+  box-shadow: 0 0 4px rgba(78, 162, 214, 0.6);
+}
+
+.speed-control input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #4ea2d6;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 4px rgba(78, 162, 214, 0.6);
+}
+
+.speed-value {
+  min-width: 40px;
+  text-align: right;
+  color: #a9e3ff;
+  font-weight: bold;
+}
+
+/* Button Styles */
+.btn-optimize,
+.btn-accept {
+  width: 100%;
+  padding: 6px 12px;
+  margin-top: 8px;
+  background: rgba(78, 162, 214, 0.2);
+  border: 1px solid rgba(78, 162, 214, 0.8);
+  border-radius: 6px;
+  color: #a9e3ff;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.btn-optimize:hover,
+.btn-accept:hover {
+  background: rgba(78, 162, 214, 0.4);
+  border-color: #4ea2d6;
+}
+
+.btn-optimize:active,
+.btn-accept:active {
+  background: rgba(78, 162, 214, 0.3);
+}
+
+/* Route Suggestions */
+.route-suggestions {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.route-card {
+  padding: 8px;
+  border: 1px solid rgba(62, 105, 139, 0.7);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+  color: #b7d5eb;
+}
+
+.route-card:hover {
+  border-color: rgba(78, 162, 214, 0.8);
+  background: rgba(40, 70, 100, 0.2);
+}
+
+.route-card.selected {
+  border-color: #4ea2d6;
+  background: rgba(40, 90, 130, 0.3);
+}
+
+.route-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.route-header strong {
+  color: #dbeeff;
+}
+
+.route-eta {
+  color: #22c55e;
+  font-weight: bold;
+}
+
+.route-info {
+  display: flex;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: #888;
+  margin-bottom: 6px;
+}
+
+.congestion {
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.congestion-0,
+.congestion-1 {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.congestion-2 {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+
+.congestion-3 {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+/* Timeline */
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.timeline-item {
+  padding: 6px;
+  border-left: 2px solid rgba(78, 162, 214, 0.5);
+  padding-left: 10px;
+  font-size: 0.8rem;
+}
+
+.timeline-item small {
+  color: #888;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.timeline-item div {
+  color: #b7d5eb;
+  margin-bottom: 2px;
 }
 
 @media (max-width: 1100px) {

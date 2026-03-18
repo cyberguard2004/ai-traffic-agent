@@ -1,11 +1,12 @@
 import asyncio
 import json
 import logging
-from fastapi import FastAPI, WebSocket, HTTPException
+from fastapi import FastAPI, WebSocket, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import os
 import sys
+from datetime import datetime
 
 from sumo_bridge import SUMOBridge
 from data_converter import SimulationSnapshotConverter
@@ -18,6 +19,9 @@ sumo_bridge = None
 simulation_active = False
 connected_clients = set()
 simulation_task = None
+data_source_mode = "sumo"  # "sumo" | "real"
+latest_real_snapshot = None
+real_tick_count = 0
 
 
 @asynccontextmanager
@@ -53,6 +57,88 @@ async def health():
         "status": "ok",
         "sumo_active": simulation_active,
         "connected_clients": len(connected_clients),
+        "data_source": data_source_mode,
+        "has_real_snapshot": latest_real_snapshot is not None,
+    }
+
+
+def ensure_snapshot_defaults(snapshot: dict, tick: int) -> dict:
+    """Normalize an incoming snapshot so frontend can always parse it."""
+    normalized = {
+        "type": snapshot.get("type", "snapshot"),
+        "tick": snapshot.get("tick", tick),
+        "timestamp": snapshot.get(
+            "timestamp", datetime.utcnow().isoformat() + "Z"
+        ),
+        "center": snapshot.get("center", [-1.286389, 36.817223]),
+        "markers": snapshot.get("markers", []),
+        "routes": snapshot.get("routes", []),
+        "incidents": snapshot.get("incidents", []),
+        "stats": snapshot.get(
+            "stats",
+            {
+                "active_vehicles": len(snapshot.get("markers", [])),
+                "avg_speed": 0,
+                "total_incidents": len(snapshot.get("incidents", [])),
+            },
+        ),
+    }
+    return normalized
+
+
+def ensure_broadcast_loop_running():
+    """Start the broadcast loop if it is not already active."""
+    global simulation_task, simulation_active
+    if simulation_task and not simulation_task.done():
+        return
+
+    simulation_active = True
+    simulation_task = asyncio.create_task(simulation_loop())
+
+
+@app.post("/simulation/source")
+async def set_simulation_source(mode: str):
+    """Switch live mode source between SUMO and externally pushed real data."""
+    global data_source_mode
+    mode = (mode or "").strip().lower()
+    if mode not in {"sumo", "real"}:
+        raise HTTPException(status_code=400, detail="mode must be 'sumo' or 'real'")
+
+    data_source_mode = mode
+
+    if mode == "real":
+        ensure_broadcast_loop_running()
+
+    return {
+        "status": "source_updated",
+        "data_source": data_source_mode,
+        "simulation_active": simulation_active,
+    }
+
+
+@app.post("/simulation/real-snapshot")
+async def push_real_snapshot(snapshot: dict = Body(...)):
+    """Push a real-time snapshot payload to be broadcast in real-data mode."""
+    global latest_real_snapshot, real_tick_count
+
+    required_fields = ["center", "markers", "routes", "incidents"]
+    missing = [field for field in required_fields if field not in snapshot]
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing required fields: {', '.join(missing)}",
+        )
+
+    real_tick_count += 1
+    latest_real_snapshot = ensure_snapshot_defaults(snapshot, real_tick_count)
+
+    if data_source_mode == "real":
+        ensure_broadcast_loop_running()
+
+    return {
+        "status": "snapshot_received",
+        "tick": latest_real_snapshot["tick"],
+        "data_source": data_source_mode,
     }
 
 
@@ -162,7 +248,7 @@ async def report_incident(x: float, y: float, severity: str = "high"):
 
 async def simulation_loop():
     """Main simulation loop that broadcasts updates to all connected clients."""
-    global simulation_active, sumo_bridge, connected_clients
+    global simulation_active, sumo_bridge, connected_clients, data_source_mode, latest_real_snapshot
 
     converter = SimulationSnapshotConverter()
     tick_count = 0
@@ -171,6 +257,32 @@ async def simulation_loop():
     try:
         while simulation_active and tick_count < max_steps:
             try:
+                if data_source_mode == "real":
+                    tick_count += 1
+                    snapshot = ensure_snapshot_defaults(
+                        latest_real_snapshot or {},
+                        tick_count,
+                    )
+
+                    if connected_clients:
+                        message = json.dumps(snapshot)
+                        disconnected = set()
+                        for client in connected_clients:
+                            try:
+                                await client.send_text(message)
+                            except Exception as e:
+                                logger.warning(f"Error sending to client: {e}")
+                                disconnected.add(client)
+
+                        connected_clients.difference_update(disconnected)
+
+                    await asyncio.sleep(0.1)
+                    continue
+
+                if not sumo_bridge:
+                    await asyncio.sleep(0.1)
+                    continue
+
                 # Step SUMO forward
                 sumo_bridge.step()
                 tick_count += 1

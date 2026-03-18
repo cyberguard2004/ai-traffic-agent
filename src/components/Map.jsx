@@ -1,116 +1,75 @@
-import React from "react";
-import { useState, useEffect } from "react";
+import React, { useState } from "react";
 import OpenStreetMapView from "./OpenStreetMapView";
+import { useSimulation } from "../hooks/useSimulation";
 
-const Map = () => {
-  const [mapData, setMapData] = useState({
-    center: [40.7128, -74.006],
-    zoom: 13,
-    markers: [
-      {
-        id: "v-1",
-        lat: 40.7139,
-        lng: -74.0018,
-        label: "Unit U-102",
-        status: "Patrol unit en route",
-      },
-      {
-        id: "v-2",
-        lat: 40.7098,
-        lng: -74.0132,
-        label: "Unit U-087",
-        status: "Rapid response on scene",
-      },
-    ],
-    routes: [
-      {
-        id: "r-1",
-        color: "#22c55e",
-        points: [
-          [40.7139, -74.0018],
-          [40.7121, -74.0065],
-          [40.7098, -74.0132],
-        ],
-      },
-    ],
-    incidents: [
-      {
-        id: "i-1",
-        lat: 40.7108,
-        lng: -74.0095,
-        title: "Junction J12",
-        detail: "Collision reported, lane 2 closed",
-        color: "#ef4444",
-        radius: 12,
-      },
-    ],
-  });
+const Map = ({ useMockData = false }) => {
+  const [mapClickRerouteMode, setMapClickRerouteMode] = useState(false);
+  const {
+    mapData,
+    connected,
+    tick,
+    selectedVehicle,
+    rerouteVehicleToCoordinate,
+    addAlert,
+  } = useSimulation(useMockData, { controller: true });
 
-  const [connected, setConnected] = useState(false);
-  const [tick, setTick] = useState(0);
-  const wsRef = React.useRef(null);
+  const handleMapClick = async ({ lat, lng }) => {
+    if (!mapClickRerouteMode) {
+      return;
+    }
 
-  useEffect(() => {
-    // Connect to SUMO bridge WebSocket
-    const connectWebSocket = () => {
-      const ws = new WebSocket("ws://localhost:8000/ws/simulation");
+    if (!selectedVehicle) {
+      addAlert("Select a vehicle before choosing reroute destination");
+      setMapClickRerouteMode(false);
+      return;
+    }
 
-      ws.onopen = () => {
-        console.log("Connected to SUMO bridge");
-        setConnected(true);
-      };
+    if (!useMockData) {
+      addAlert("Map-click reroute is available in Demo Mode");
+      setMapClickRerouteMode(false);
+      return;
+    }
 
-      ws.onmessage = (event) => {
-        try {
-          const snapshot = JSON.parse(event.data);
-          if (snapshot.type === "snapshot") {
-            // Update map with live data
-            setMapData({
-              center: snapshot.center,
-              zoom: 15,
-              markers: snapshot.markers || [],
-              routes: snapshot.routes || [],
-              incidents: snapshot.incidents || [],
-            });
-            setTick(snapshot.tick);
-          }
-        } catch (e) {
-          console.error("Error parsing snapshot:", e);
-        }
-      };
+    await rerouteVehicleToCoordinate(
+      selectedVehicle.id,
+      lat,
+      lng,
+      "Operator map-click destination",
+    );
 
-      ws.onclose = () => {
-        console.log("Disconnected from SUMO bridge");
-        setConnected(false);
-        // Attempt reconnection after 3 seconds
-        setTimeout(connectWebSocket, 3000);
-      };
-
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-      };
-
-      wsRef.current = ws;
-    };
-
-    connectWebSocket();
-
-    // Cleanup on unmount
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-    };
-  }, []);
+    setMapClickRerouteMode(false);
+  };
 
   return (
     <div className="map-surface">
+      <div className="map-controls">
+        <button
+          type="button"
+          className={`map-action-btn ${mapClickRerouteMode ? "active" : ""}`}
+          onClick={() => setMapClickRerouteMode((value) => !value)}
+          disabled={!selectedVehicle}
+          title={
+            selectedVehicle
+              ? "Click map to set reroute destination"
+              : "Select a vehicle first"
+          }
+        >
+          {mapClickRerouteMode
+            ? "Click Destination..."
+            : "Reroute By Map Click"}
+        </button>
+      </div>
       <OpenStreetMapView
         center={mapData.center}
         zoom={mapData.zoom}
         markers={mapData.markers}
         routes={mapData.routes}
         incidents={mapData.incidents}
+        disasterZones={mapData.disasterZones}
+        heatmapData={mapData.heatmapData}
+        onMapClick={handleMapClick}
+        mapClickMode={mapClickRerouteMode}
+        selectedVehicleLabel={selectedVehicle?.id}
       />
       <div className="map-watermark">
         OpenStreetMap {connected ? "● Live" : "○ Offline"}

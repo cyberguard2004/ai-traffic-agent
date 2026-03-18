@@ -1,36 +1,28 @@
 import React from "react";
+import { useSimulation } from "../hooks/useSimulation";
 
-const Vehicles = () => {
-  const units = [
-    {
-      id: "U-102",
-      type: "Patrol",
-      zone: "Downtown",
-      state: "En Route",
-      eta: "3m",
-    },
-    {
-      id: "U-087",
-      type: "Rapid",
-      zone: "North Ring",
-      state: "On Scene",
-      eta: "Now",
-    },
-    {
-      id: "U-141",
-      type: "Support",
-      zone: "Harbor",
-      state: "Standby",
-      eta: "8m",
-    },
-    {
-      id: "U-119",
-      type: "Tow",
-      zone: "East Link",
-      state: "Monitoring",
-      eta: "5m",
-    },
-  ];
+const Vehicles = ({ useMockData = false }) => {
+  const { vehicles, selectedVehicleId, selectVehicle, deselectVehicle } =
+    useSimulation(useMockData);
+
+  const handleVehicleClick = (vehicleId) => {
+    if (selectedVehicleId === vehicleId) {
+      deselectVehicle();
+    } else {
+      selectVehicle(vehicleId);
+    }
+  };
+
+  // Count stats by state
+  const stats = {
+    available: vehicles.filter(
+      (v) => v.state === "Standby" || v.state === "On Patrol",
+    ).length,
+    busy: vehicles.filter((v) =>
+      ["En Route", "On Scene", "Monitoring"].includes(v.state),
+    ).length,
+    reserve: Math.max(0, 6 - vehicles.length),
+  };
 
   return (
     <article className="panel fleet-panel">
@@ -42,36 +34,55 @@ const Vehicles = () => {
       <div className="fleet-stats">
         <div>
           <span>Available</span>
-          <strong>14</strong>
+          <strong>{stats.available}</strong>
         </div>
         <div>
           <span>Busy</span>
-          <strong>22</strong>
+          <strong>{stats.busy}</strong>
         </div>
         <div>
           <span>Reserve</span>
-          <strong>6</strong>
+          <strong>{stats.reserve}</strong>
         </div>
       </div>
 
       <ul className="fleet-list">
-        {units.map((unit) => (
-          <li key={unit.id} className="fleet-item">
-            <div className="fleet-head">
-              <strong>{unit.id}</strong>
-              <span>{unit.type}</span>
-            </div>
-            <div className="fleet-row">
-              <span>{unit.zone}</span>
-              <span
-                className={`tag ${unit.state.toLowerCase().replace(/\s/g, "-")}`}
-              >
-                {unit.state}
-              </span>
-              <span>ETA {unit.eta}</span>
-            </div>
+        {vehicles.length > 0 ? (
+          vehicles.map((unit) => (
+            <li
+              key={unit.id}
+              className={`fleet-item ${selectedVehicleId === unit.id ? "selected" : ""}`}
+              onClick={() => handleVehicleClick(unit.id)}
+            >
+              <div className="fleet-head">
+                <strong>{unit.id}</strong>
+                <span>{unit.type}</span>
+              </div>
+              <div className="fleet-row">
+                <span>{unit.zone}</span>
+                <span
+                  className={`tag ${unit.state
+                    .toLowerCase()
+                    .replace(/\s/g, "-")}`}
+                >
+                  {unit.state}
+                </span>
+                <span>ETA {unit.eta}</span>
+              </div>
+              {selectedVehicleId === unit.id && (
+                <div className="fleet-details">
+                  <p>Speed: {unit.speed || 0} m/s</p>
+                  <p>Max Speed: {unit.maxSpeed} m/s</p>
+                  <p>Has Route: {unit.hasRoute ? "Yes" : "No"}</p>
+                </div>
+              )}
+            </li>
+          ))
+        ) : (
+          <li style={{ padding: "10px", color: "#888" }}>
+            No vehicles available
           </li>
-        ))}
+        )}
       </ul>
     </article>
   );

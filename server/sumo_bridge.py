@@ -2,6 +2,7 @@ import os
 import subprocess
 import time
 import logging
+import math
 from pathlib import Path
 
 try:
@@ -17,6 +18,9 @@ logger = logging.getLogger(__name__)
 
 class SUMOBridge:
     """Bridge to SUMO simulator via TraCI."""
+
+    NAIROBI_LAT = -1.286389
+    NAIROBI_LON = 36.817223
 
     def __init__(self, sumocfg_path: str, gui: bool = False, port: int = 8813):
         """
@@ -58,9 +62,16 @@ class SUMOBridge:
             self.running = True
 
             # Load network for coordinate conversion
-            self.net = sumolib.net.readNet(
-                self._get_net_file(), withInternal=False
-            )
+            try:
+                self.net = sumolib.net.readNet(
+                    self._get_net_file(), withInternal=False
+                )
+            except Exception as e:
+                logger.warning(
+                    "Failed to load SUMO net geodata; using XY fallback around Nairobi: %s",
+                    e,
+                )
+                self.net = None
             logger.info("SUMO connected via TraCI")
 
         except Exception as e:
@@ -102,7 +113,7 @@ class SUMOBridge:
                 speed = traci.vehicle.getSpeed(veh_id)
                 route = traci.vehicle.getRouteID(veh_id)
                 state = traci.vehicle.getSpeed(veh_id)
-                lon, lat = self.net.convertXY2LonLat(pos[0], pos[1])
+                lon, lat = self._xy_to_lon_lat(pos[0], pos[1])
 
                 vehicles.append(
                     {
@@ -135,7 +146,7 @@ class SUMOBridge:
                             edge = self.net.getEdge(edge_id)
                             shape = edge.getShape()
                             for x, y in shape:
-                                lon, lat = self.net.convertXY2LonLat(x, y)
+                                lon, lat = self._xy_to_lon_lat(x, y)
                                 points.append([lat, lon])
                         except:
                             pass
@@ -172,7 +183,7 @@ class SUMOBridge:
                             # Get junction position
                             junction = self.net.getNode(junction_id)
                             x, y = junction.getCoord()
-                            lon, lat = self.net.convertXY2LonLat(x, y)
+                            lon, lat = self._xy_to_lon_lat(x, y)
 
                             incidents.append(
                                 {
@@ -208,13 +219,35 @@ class SUMOBridge:
                 bounds = self.net.getBoundary()
                 center_x = (bounds[0] + bounds[2]) / 2
                 center_y = (bounds[1] + bounds[3]) / 2
-                lon, lat = self.net.convertXY2LonLat(center_x, center_y)
+                lon, lat = self._xy_to_lon_lat(center_x, center_y)
                 return {"lat": lat, "lon": lon, "x": center_x, "y": center_y}
         except Exception as e:
             logger.error(f"Error getting bounds: {e}")
 
-        # Fallback NYC center
-        return {"lat": 40.7128, "lon": -74.006, "x": 0, "y": 0}
+        # Fallback Nairobi center
+        return {"lat": self.NAIROBI_LAT, "lon": self.NAIROBI_LON, "x": 0, "y": 0}
+
+    def _xy_to_lon_lat(self, x: float, y: float):
+        """Convert SUMO XY coordinates to lon/lat with robust fallback.
+
+        Some generated SUMO networks do not include full georeferencing metadata
+        (for example missing origBoundary), which makes convertXY2LonLat fail.
+        In that case, project the local XY plane around Nairobi.
+        """
+        if self.net:
+            try:
+                lon, lat = self.net.convertXY2LonLat(x, y)
+                return lon, lat
+            except Exception:
+                pass
+
+        meters_per_deg_lat = 111320.0
+        meters_per_deg_lon = 111320.0 * max(
+            0.2, abs(math.cos(math.radians(self.NAIROBI_LAT)))
+        )
+        lat = self.NAIROBI_LAT + (y / meters_per_deg_lat)
+        lon = self.NAIROBI_LON + (x / meters_per_deg_lon)
+        return lon, lat
 
     def reroute_vehicle(self, vehicle_id: str, route_id: str = None):
         """Reroute a vehicle."""
