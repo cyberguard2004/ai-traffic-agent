@@ -244,16 +244,37 @@ class SUMOBridge:
 
     def _build_sumo_command(self):
         """Build SUMO startup command."""
-        sumo_home = os.environ.get(
-            "SUMO_HOME", "C:\\Program Files\\Eclipse\\Sumo"
-        )
         sumo_bin = "sumo-gui" if self.gui else "sumo"
-        sumo_exe = os.path.join(sumo_home, "bin", f"{sumo_bin}.exe")
+        candidate_homes = []
 
-        if not os.path.exists(sumo_exe):
+        # Respect explicit SUMO_HOME first.
+        env_home = os.environ.get("SUMO_HOME")
+        if env_home:
+            candidate_homes.append(env_home)
+
+        # Common Windows install locations.
+        candidate_homes.extend(
+            [
+                "C:\\Program Files\\Eclipse\\Sumo",
+                "C:\\Program Files (x86)\\Eclipse\\Sumo",
+                "C:\\Program Files\\SUMO",
+                "C:\\Program Files (x86)\\SUMO",
+                "C:\\sumo",
+            ]
+        )
+
+        sumo_exe = None
+        for home in candidate_homes:
+            candidate_exe = os.path.join(home, "bin", f"{sumo_bin}.exe")
+            if os.path.exists(candidate_exe):
+                sumo_exe = candidate_exe
+                break
+
+        if not sumo_exe:
             raise FileNotFoundError(
-                f"SUMO executable not found at {sumo_exe}. "
-                f"Set SUMO_HOME environment variable."
+                "SUMO executable not found. "
+                "Set SUMO_HOME to your SUMO install root, e.g. "
+                "C:\\Program Files (x86)\\Eclipse\\Sumo."
             )
 
         return [

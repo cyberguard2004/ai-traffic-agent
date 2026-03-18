@@ -35,6 +35,12 @@ setx SUMO_HOME "C:\Program Files\Eclipse\Sumo"
 # Restart PowerShell
 ```
 
+If SUMO is installed under Program Files (x86), use:
+
+```powershell
+setx SUMO_HOME "C:\Program Files (x86)\Eclipse\Sumo"
+```
+
 Verify:
 
 ```powershell
