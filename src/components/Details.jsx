@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useSimulation } from "../hooks/useSimulation";
 
 const Details = ({ useMockData = false }) => {
@@ -13,6 +13,54 @@ const Details = ({ useMockData = false }) => {
   const [targetSpeed, setTargetSpeed] = useState(10);
   const [showRouteOptimizer, setShowRouteOptimizer] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState(null);
+  const [shakingEventIds, setShakingEventIds] = useState([]);
+  const knownEventIdsRef = useRef(new Set());
+
+  useEffect(() => {
+    const latestEventIds = timeline.slice(0, 8).map((event) => event.id);
+    const newlyArrived = latestEventIds.filter(
+      (id) => !knownEventIdsRef.current.has(id),
+    );
+
+    if (newlyArrived.length === 0) {
+      return undefined;
+    }
+
+    for (const id of newlyArrived) {
+      knownEventIdsRef.current.add(id);
+    }
+
+    setShakingEventIds((prev) =>
+      Array.from(new Set([...prev, ...newlyArrived])),
+    );
+
+    const timeout = setTimeout(() => {
+      setShakingEventIds((prev) =>
+        prev.filter((eventId) => !newlyArrived.includes(eventId)),
+      );
+    }, 700);
+
+    return () => clearTimeout(timeout);
+  }, [timeline]);
+
+  const formatTimelineTime = (timestamp) => {
+    const value = timestamp instanceof Date ? timestamp : new Date(timestamp);
+    return Number.isNaN(value.getTime())
+      ? "--:--:--"
+      : value.toLocaleTimeString();
+  };
+
+  const dynamicEvents = timeline
+    .filter((event) => event.category === "dynamic")
+    .slice(0, 5);
+
+  const getTimelineItemClass = (event) => {
+    const severityClass = `timeline-item-${event.severity || "info"}`;
+    const shakeClass = shakingEventIds.includes(event.id)
+      ? "timeline-item-shake"
+      : "";
+    return `timeline-item ${severityClass} ${shakeClass}`.trim();
+  };
 
   const handleSpeedChange = (e) => {
     const newSpeed = parseFloat(e.target.value);
@@ -145,11 +193,35 @@ const Details = ({ useMockData = false }) => {
 
           {/* Timeline */}
           <section className="details-section">
+            <h3>Dynamic Events</h3>
+            <ul className="timeline">
+              {dynamicEvents.length > 0 ? (
+                dynamicEvents.map((event) => (
+                  <li key={event.id} className={getTimelineItemClass(event)}>
+                    <small>{formatTimelineTime(event.timestamp)}</small>
+                    <div>{event.event}</div>
+                    {event.details && (
+                      <small style={{ color: "#8fb7d3" }}>
+                        {event.details}
+                      </small>
+                    )}
+                  </li>
+                ))
+              ) : (
+                <li className="timeline-item timeline-item-info">
+                  <div>No dynamic events yet.</div>
+                </li>
+              )}
+            </ul>
+          </section>
+
+          {/* Timeline */}
+          <section className="details-section">
             <h3>Timeline</h3>
             <ul className="timeline">
               {timeline.slice(0, 5).map((event) => (
-                <li key={event.id} className="timeline-item">
-                  <small>{event.timestamp.toLocaleTimeString()}</small>
+                <li key={event.id} className={getTimelineItemClass(event)}>
+                  <small>{formatTimelineTime(event.timestamp)}</small>
                   <div>{event.event}</div>
                   {event.details && (
                     <small style={{ color: "#888" }}>{event.details}</small>
@@ -179,11 +251,34 @@ const Details = ({ useMockData = false }) => {
 
           {/* Timeline */}
           <section className="details-section">
+            <h3>Dynamic Events</h3>
+            <ul className="timeline">
+              {dynamicEvents.length > 0 ? (
+                dynamicEvents.map((event) => (
+                  <li key={event.id} className={getTimelineItemClass(event)}>
+                    <small>{formatTimelineTime(event.timestamp)}</small>
+                    <div>{event.event}</div>
+                    {event.details && (
+                      <small style={{ color: "#8fb7d3" }}>
+                        {event.details}
+                      </small>
+                    )}
+                  </li>
+                ))
+              ) : (
+                <li className="timeline-item timeline-item-info">
+                  <div>Monitoring for disasters and rerouting changes.</div>
+                </li>
+              )}
+            </ul>
+          </section>
+
+          <section className="details-section">
             <h3>Recent Events</h3>
             <ul className="timeline">
               {timeline.slice(0, 5).map((event) => (
-                <li key={event.id} className="timeline-item">
-                  <small>{event.timestamp.toLocaleTimeString()}</small>
+                <li key={event.id} className={getTimelineItemClass(event)}>
+                  <small>{formatTimelineTime(event.timestamp)}</small>
                   <div>{event.event}</div>
                   {event.details && (
                     <small style={{ color: "#888" }}>{event.details}</small>

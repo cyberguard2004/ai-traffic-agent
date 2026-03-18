@@ -12,6 +12,7 @@ const Map = ({ useMockData = false }) => {
     rerouteVehicleToCoordinate,
     addAlert,
   } = useSimulation(useMockData, { controller: true });
+  const vehicleCount = mapData?.markers?.length || 0;
 
   const handleMapClick = async ({ lat, lng }) => {
     if (!mapClickRerouteMode) {
@@ -62,6 +63,7 @@ const Map = ({ useMockData = false }) => {
       <OpenStreetMapView
         center={mapData.center}
         zoom={mapData.zoom}
+        tick={tick}
         markers={mapData.markers}
         routes={mapData.routes}
         incidents={mapData.incidents}
@@ -73,6 +75,10 @@ const Map = ({ useMockData = false }) => {
       />
       <div className="map-watermark">
         OpenStreetMap {connected ? "● Live" : "○ Offline"}
+        <span>
+          {" "}
+          • {vehicleCount} {vehicleCount === 1 ? "car" : "cars"}
+        </span>
         {tick > 0 && <span> • Tick {tick}</span>}
       </div>
     </div>

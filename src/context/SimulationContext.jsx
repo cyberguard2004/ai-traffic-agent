@@ -129,6 +129,8 @@ const simulationReducer = (state, action) => {
             event: action.payload.event,
             vehicleId: action.payload.vehicleId,
             details: action.payload.details,
+            category: action.payload.category || "general",
+            severity: action.payload.severity || "info",
           },
           ...state.timeline,
         ].slice(0, 50), // Keep last 50 events

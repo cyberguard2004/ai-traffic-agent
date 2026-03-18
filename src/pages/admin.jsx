@@ -8,9 +8,26 @@ const Admin = () => {
   const [useMockData, setUseMockData] = useState(true);
   const [liveSource, setLiveSource] = useState("sumo");
   const [sourceStatus, setSourceStatus] = useState("Idle");
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
   const backendBaseUrl = (
     import.meta.env.VITE_BACKEND_URL || "http://localhost:8000"
   ).replace(/\/$/, "");
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 840px)");
+
+    const applyPanelDefaults = (matchesMobile) => {
+      setLeftCollapsed(matchesMobile);
+      setRightCollapsed(matchesMobile);
+    };
+
+    applyPanelDefaults(media.matches);
+
+    const listener = (event) => applyPanelDefaults(event.matches);
+    media.addEventListener("change", listener);
+    return () => media.removeEventListener("change", listener);
+  }, []);
 
   useEffect(() => {
     if (useMockData) {
@@ -61,59 +78,87 @@ const Admin = () => {
       </section>
 
       <div className="overlay-panels">
-        <section className="floating-panel layout-left">
-          <Vehicles useMockData={useMockData} />
+        <section
+          className={`floating-panel layout-left ${leftCollapsed ? "collapsed" : ""}`}
+        >
+          <div className="panel-dock">
+            <button
+              type="button"
+              className="panel-toggle-btn"
+              onClick={() => setLeftCollapsed((value) => !value)}
+            >
+              {leftCollapsed ? "Show Fleet" : "Hide Fleet"}
+            </button>
+            {!leftCollapsed && <Vehicles useMockData={useMockData} />}
+          </div>
         </section>
 
-        <section className="floating-panel layout-right">
-          <Details useMockData={useMockData} />
+        <section
+          className={`floating-panel layout-right ${rightCollapsed ? "collapsed" : ""}`}
+        >
+          <div className="panel-dock">
+            <button
+              type="button"
+              className="panel-toggle-btn"
+              onClick={() => setRightCollapsed((value) => !value)}
+            >
+              {rightCollapsed ? "Show Details" : "Hide Details"}
+            </button>
 
-          {/* Demo Mode Toggle */}
-          <div
-            className="demo-toggle"
-            style={{
-              marginTop: "12px",
-              padding: "8px",
-              border: "1px solid rgba(81, 144, 188, 0.5)",
-              borderRadius: "6px",
-              fontSize: "0.8rem",
-              textAlign: "center",
-            }}
-          >
-            <label style={{ cursor: "pointer", color: "#b7d5eb" }}>
-              <input
-                type="checkbox"
-                checked={useMockData}
-                onChange={(e) => setUseMockData(e.target.checked)}
-                style={{ marginRight: "6px" }}
-              />
-              {useMockData ? "Demo Mode (Mock Data)" : "Live Mode (SUMO)"}
-            </label>
+            {!rightCollapsed && (
+              <>
+                <Details useMockData={useMockData} />
 
-            {!useMockData && (
-              <div style={{ marginTop: "10px", textAlign: "left" }}>
-                <label style={{ color: "#b7d5eb", fontSize: "0.78rem" }}>
-                  Live Source:
-                </label>
-                <select
-                  value={liveSource}
-                  onChange={(e) => setLiveSource(e.target.value)}
+                {/* Demo Mode Toggle */}
+                <div
+                  className="demo-toggle"
                   style={{
-                    marginLeft: "8px",
-                    background: "#12283a",
-                    color: "#d8ecfb",
+                    marginTop: "12px",
+                    padding: "8px",
                     border: "1px solid rgba(81, 144, 188, 0.5)",
-                    borderRadius: "4px",
-                    padding: "2px 6px",
+                    borderRadius: "6px",
+                    fontSize: "0.8rem",
+                    textAlign: "center",
+                    background: "rgba(8, 23, 36, 0.84)",
                   }}
                 >
-                  <option value="sumo">SUMO</option>
-                  <option value="real">Real Data</option>
-                </select>
-                <div style={{ marginTop: "6px", color: "#8fb7d3" }}>
-                  {sourceStatus}
+                  <label style={{ cursor: "pointer", color: "#b7d5eb" }}>
+                    <input
+                      type="checkbox"
+                      checked={useMockData}
+                      onChange={(e) => setUseMockData(e.target.checked)}
+                      style={{ marginRight: "6px" }}
+                    />
+                    {useMockData ? "Demo Mode (Mock Data)" : "Live Mode (SUMO)"}
+                  </label>
+
+                  {!useMockData && (
+                    <div style={{ marginTop: "10px", textAlign: "left" }}>
+                      <label style={{ color: "#b7d5eb", fontSize: "0.78rem" }}>
+                        Live Source:
+                      </label>
+                      <select
+                        value={liveSource}
+                        onChange={(e) => setLiveSource(e.target.value)}
+                        style={{
+                          marginLeft: "8px",
+                          background: "#12283a",
+                          color: "#d8ecfb",
+                          border: "1px solid rgba(81, 144, 188, 0.5)",
+                          borderRadius: "4px",
+                          padding: "2px 6px",
+                        }}
+                      >
+                        <option value="sumo">SUMO</option>
+                        <option value="real">Real Data</option>
+                      </select>
+                      <div style={{ marginTop: "6px", color: "#8fb7d3" }}>
+                        {sourceStatus}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+              </>
             )}
           </div>
         </section>

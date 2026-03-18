@@ -6,6 +6,7 @@ import {
   Popup,
   Polyline,
   CircleMarker,
+  Tooltip,
   useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
@@ -47,6 +48,7 @@ const MapClickHandler = ({ onMapClick }) => {
 const OpenStreetMapView = ({
   center,
   zoom,
+  tick = 0,
   markers,
   routes,
   incidents,
@@ -57,6 +59,31 @@ const OpenStreetMapView = ({
   mapClickMode = false,
   selectedVehicleLabel,
 }) => {
+  const getEventAging = (event) => {
+    const createdAtTick = Number(event?.createdAtTick);
+    const expiresAtTick = Number(event?.expiresAtTick);
+    const hasFiniteExpiry = Number.isFinite(expiresAtTick);
+
+    if (!hasFiniteExpiry) {
+      return {
+        hasCountdown: false,
+        countdownLabel: "",
+        ageRatio: 1,
+      };
+    }
+
+    const totalDuration = Math.max(1, expiresAtTick - (createdAtTick || 0));
+    const remainingTicks = Math.max(0, expiresAtTick - Number(tick || 0));
+    const ageRatio = Math.max(0, Math.min(1, remainingTicks / totalDuration));
+    const secondsLeft = Math.ceil(remainingTicks / 10);
+
+    return {
+      hasCountdown: true,
+      countdownLabel: `T-${secondsLeft}s`,
+      ageRatio,
+    };
+  };
+
   // Convert heatmap data to heatmap layer format (lat, lng, intensity as weight)
   const renderHeatmapLayer = () => {
     if (!heatmapData || heatmapData.length === 0) {
@@ -174,53 +201,106 @@ const OpenStreetMapView = ({
           </Marker>
         ))}
 
-        {incidents.map((incident) => (
-          <CircleMarker
-            key={incident.id}
-            center={[incident.lat, incident.lng]}
-            radius={incident.radius || 10}
-            pathOptions={{
-              color: incident.color || "#ef4444",
-              fillColor: incident.color || "#ef4444",
-              fillOpacity: 0.3,
-            }}
-          >
-            <Popup>
-              <strong>{incident.title}</strong>
-              <br />
-              {incident.detail}
-            </Popup>
-          </CircleMarker>
-        ))}
+        {incidents.map((incident) =>
+          (() => {
+            const aging = getEventAging(incident);
+            const radiusScale = 0.78 + aging.ageRatio * 0.42;
+            const fillOpacity = 0.14 + aging.ageRatio * 0.3;
+            const ringWeight = 1.2 + aging.ageRatio * 1.8;
+
+            return (
+              <CircleMarker
+                key={incident.id}
+                center={[incident.lat, incident.lng]}
+                radius={(incident.radius || 10) * radiusScale}
+                pathOptions={{
+                  color: incident.color || "#ef4444",
+                  fillColor: incident.color || "#ef4444",
+                  fillOpacity,
+                  weight: ringWeight,
+                }}
+              >
+                {aging.hasCountdown && (
+                  <Tooltip
+                    permanent
+                    direction="top"
+                    offset={[0, -12]}
+                    className="event-countdown-chip incident"
+                  >
+                    {aging.countdownLabel}
+                  </Tooltip>
+                )}
+                <Popup>
+                  <strong>{incident.title}</strong>
+                  <br />
+                  {incident.detail}
+                  {aging.hasCountdown && (
+                    <>
+                      <br />
+                      <strong>Clears in:</strong>{" "}
+                      {aging.countdownLabel.replace("T-", "")}
+                    </>
+                  )}
+                </Popup>
+              </CircleMarker>
+            );
+          })(),
+        )}
 
         {/* Render disaster zones with warning styling */}
-        {disasterZones.map((zone) => (
-          <CircleMarker
-            key={zone.id}
-            center={[zone.lat, zone.lng]}
-            radius={zone.radius || 50}
-            pathOptions={{
-              color: zone.color || "#dc2626",
-              fillColor: zone.color || "#dc2626",
-              fillOpacity: 0.15,
-              weight: 3,
-              dashArray: "5 5",
-            }}
-          >
-            <Popup>
-              <strong style={{ color: zone.color }}>⚠️ {zone.title}</strong>
-              <br />
-              <em>{zone.detail}</em>
-              <br />
-              <br />
-              <strong>Severity:</strong> {zone.severity}
-              <br />
-              <strong>Radius:</strong> {zone.radius}m
-              <br />
-              <strong>Status:</strong> All traffic rerouted
-            </Popup>
-          </CircleMarker>
-        ))}
+        {disasterZones.map((zone) =>
+          (() => {
+            const aging = getEventAging(zone);
+            const fillOpacity = 0.08 + aging.ageRatio * 0.16;
+            const ringWeight = 2 + aging.ageRatio * 2.2;
+            const dash = aging.ageRatio < 0.33 ? "3 9" : "5 5";
+
+            return (
+              <CircleMarker
+                key={zone.id}
+                center={[zone.lat, zone.lng]}
+                radius={zone.radius || 50}
+                pathOptions={{
+                  color: zone.color || "#dc2626",
+                  fillColor: zone.color || "#dc2626",
+                  fillOpacity,
+                  weight: ringWeight,
+                  dashArray: dash,
+                }}
+              >
+                {aging.hasCountdown && (
+                  <Tooltip
+                    permanent
+                    direction="top"
+                    offset={[0, -18]}
+                    className="event-countdown-chip disaster"
+                  >
+                    {aging.countdownLabel}
+                  </Tooltip>
+                )}
+                <Popup>
+                  <strong style={{ color: zone.color }}>⚠️ {zone.title}</strong>
+                  <br />
+                  <em>{zone.detail}</em>
+                  <br />
+                  <br />
+                  <strong>Severity:</strong> {zone.severity}
+                  <br />
+                  <strong>Radius:</strong> {zone.radius}m
+                  <br />
+                  <strong>Status:</strong> All traffic rerouted
+                  {aging.hasCountdown && (
+                    <>
+                      <br />
+                      <strong>Expected clear:</strong>{" "}
+                      {aging.countdownLabel.replace("T-", "")}
+                    </>
+                  )}
+                </Popup>
+              </CircleMarker>
+            );
+          })(),
+        )}
       </MapContainer>
     </div>
   );
